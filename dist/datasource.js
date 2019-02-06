@@ -1,8 +1,15 @@
 ///<reference path="../node_modules/grafana-sdk-mocks/app/headers/common.d.ts" />
-System.register([], function(exports_1) {
+System.register(['lodash', 'moment'], function(exports_1) {
+    var lodash_1, moment_1;
     var YNABDatasource;
     return {
-        setters:[],
+        setters:[
+            function (lodash_1_1) {
+                lodash_1 = lodash_1_1;
+            },
+            function (moment_1_1) {
+                moment_1 = moment_1_1;
+            }],
         execute: function() {
             YNABDatasource = (function () {
                 /** @ngInject */
@@ -12,25 +19,137 @@ System.register([], function(exports_1) {
                     this.$q = $q;
                     this.name = instanceSettings.name;
                     this.id = instanceSettings.id;
+                    this.q = $q;
                     this.type = instanceSettings.type;
-                    this.url = 'https://api.youneedabudget.com/v1/budgets'; // instanceSettings.url;
+                    this.url = 'https://api.youneedabudget.com/v1';
                     this.name = instanceSettings.name;
                     this.backendSrv = backendSrv;
                     this.templateSrv = templateSrv;
-                    this.withCredentials = instanceSettings.withCredentials;
+                    this.accessToken = instanceSettings.jsonData.acessToken;
                     this.headers = { 'Content-Type': 'application/json' };
-                    this.headers['Authorization'] = 'Bearer 7e3e933020afc332d70d961e4cc241b4b282a919801012b8032306cf2909e941';
-                    if (typeof instanceSettings.basicAuth === 'string' && instanceSettings.basicAuth.length > 0) {
-                    }
+                    this.budgets = [];
+                    this.headers['Authorization'] = "Bearer " + this.accessToken;
                 }
                 YNABDatasource.prototype.query = function (options) {
-                    throw new Error("Query Support not implemented yet.");
+                    var _this = this;
+                    console.log(options);
+                    var urlsMap = {
+                        "budgets": this.url + "/budgets/",
+                        "accounts": this.url + "/budgets/" + options.targets[0].budget.id + "/accounts",
+                        "transactions": this.url + "/budgets/" + options.targets[0].budget.id + "/transactions" //?since_date=2018-10-14`,
+                    };
+                    return this.doRequest({
+                        url: urlsMap[options.targets[0].dataType],
+                        method: 'GET'
+                    }).then(function (result) {
+                        var returnData;
+                        if (options.targets[0].formatType === 'timeserie') {
+                            returnData = _this.returnTimeseriesData(result, options.scopedVar);
+                        }
+                        else {
+                            returnData = _this.returnTableData(result, options.scopedVar);
+                        }
+                        return returnData;
+                    });
+                };
+                YNABDatasource.prototype.returnTableData = function (result, scopedVar) {
+                    var returnArr = { data: [
+                            {
+                                "columns": [
+                                    {
+                                        "text": "Name",
+                                        "type": "string",
+                                        "sort": true,
+                                        "desc": true,
+                                    }, {
+                                        "text": "Balance",
+                                        "type": "number",
+                                        "sort": true,
+                                        "desc": true,
+                                    },
+                                ],
+                                "rows": [],
+                                "type": "table"
+                            }
+                        ] };
+                    result.data.data.accounts.forEach(function (account) {
+                        returnArr.data[0].rows.push([account.name, account.balance / 1000]);
+                    });
+                    return Promise.resolve(returnArr);
+                };
+                YNABDatasource.prototype.returnTimeseriesData = function (result, scopedVar) {
+                    var returnArr = { data: [] };
+                    result.data.data.transactions.forEach(function (transaction) {
+                        // Group by category_name
+                        if (transaction.category_name !== null) {
+                            // Place transaction into target group
+                            var targetGroup = returnArr.data.filter(function (o) {
+                                return o.target === transaction.category_name;
+                            })[0];
+                            // Create the target group if it doesn't exist
+                            if (targetGroup === undefined) {
+                                targetGroup = {
+                                    "target": transaction.category_name,
+                                    "datapoints": []
+                                };
+                                returnArr.data.push(targetGroup);
+                            }
+                            // Create datapoints for target group
+                            targetGroup.datapoints.push([transaction.amount / 1000, moment_1.default(transaction.date).unix() * 1000]);
+                        }
+                    });
+                    var groupedResults;
+                    returnArr.data.forEach(function (target) {
+                        // Group data points by similar date
+                        groupedResults = lodash_1.default.groupBy(target.datapoints, function (item) {
+                            return item[1];
+                        });
+                        target.datapoints = [];
+                        Object.keys(groupedResults).forEach(function (timestamp) {
+                            var sum = 0;
+                            groupedResults[timestamp].forEach(function (record) {
+                                console.log(record[0]);
+                                sum += record[0];
+                            });
+                            target.datapoints.push([sum, parseInt(timestamp)]);
+                        });
+                    });
+                    console.log(returnArr);
+                    return Promise.resolve(returnArr);
                 };
                 YNABDatasource.prototype.annotationQuery = function (options) {
                     throw new Error("Annotation Support not implemented yet.");
                 };
+                YNABDatasource.prototype.budgetFindQuery = function (query) {
+                    var interpolated = {
+                        target: this.templateSrv.replace(query, null, 'regex')
+                    };
+                    return this.doRequest({
+                        url: this.url + "/budgets",
+                        data: interpolated,
+                        method: 'GET',
+                    }).then(function (result) {
+                        var dataObj = result.data.data.budgets[0];
+                        return result.data.data.budgets.map(function (budget) {
+                            return { text: budget.name, value: budget.id };
+                        });
+                    });
+                };
                 YNABDatasource.prototype.metricFindQuery = function (query) {
-                    throw new Error("Template Variable Support not implemented yet.");
+                    var interpolated = {
+                        target: this.templateSrv.replace(query, null, 'regex')
+                    };
+                    return this.doRequest({
+                        url: this.url,
+                        data: interpolated,
+                        method: 'GET',
+                    }).then(this.mapToTextValue);
+                };
+                YNABDatasource.prototype.mapToTextValue = function (result) {
+                    var dataObj = result.data.data.budgets[0];
+                    return Object.keys(dataObj).map(function (key, index) {
+                        return { text: key, value: dataObj[key] };
+                    });
                 };
                 YNABDatasource.prototype.testDatasource = function () {
                     return this.doRequest({
@@ -54,7 +173,6 @@ System.register([], function(exports_1) {
                     });
                 };
                 YNABDatasource.prototype.doRequest = function (options) {
-                    options.withCredentials = this.withCredentials;
                     options.headers = this.headers;
                     return this.backendSrv.datasourceRequest(options);
                 };

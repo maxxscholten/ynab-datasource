@@ -25,11 +25,25 @@ System.register(['lodash', 'app/plugins/sdk', './css/query_editor.css!'], functi
                     this.templateSrv = templateSrv;
                     this.defaults = {};
                     lodash_1.default.defaultsDeep(this.target, this.defaults);
-                    this.target.target = this.target.target || 'select metric';
-                    this.target.type = this.target.type || 'timeserie';
+                    this.target.budget = this.target.budget || { id: 'Select budget account' };
+                    this.target.formatType = this.target.formatType || 'timeserie';
+                    this.target.dataType = this.target.dataType || 'transactions';
+                    this.dataTypes = [
+                        { text: 'Budgets', value: 'budgets' },
+                        { text: 'Accounts', value: 'accounts' },
+                        { text: 'Transactions', value: 'transactions' },
+                    ];
+                    this.formatTypes = [
+                        { text: 'TimeSerie', value: 'timeserie' },
+                        { text: 'Table', value: 'table' },
+                    ];
+                    this.budgets = [];
                 }
                 YNABQueryCtrl.prototype.getOptions = function (query) {
                     return this.datasource.metricFindQuery(query || '');
+                };
+                YNABQueryCtrl.prototype.getBudgets = function (query) {
+                    return this.datasource.budgetFindQuery(query || '');
                 };
                 YNABQueryCtrl.prototype.onChangeInternal = function () {
                     this.panelCtrl.refresh(); // Asks the panel to refresh data.

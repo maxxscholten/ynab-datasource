@@ -6,6 +6,9 @@ import './css/query_editor.css!';
 
 export class YNABQueryCtrl extends QueryCtrl {
   static templateUrl = 'partials/query.editor.html';
+  budgets: any [];
+  dataTypes: any [];
+  formatTypes: any [];
 
   defaults = {
   };
@@ -16,12 +19,27 @@ export class YNABQueryCtrl extends QueryCtrl {
 
     _.defaultsDeep(this.target, this.defaults);
 
-    this.target.target = this.target.target || 'select metric';
-    this.target.type = this.target.type || 'timeserie';
+    this.target.budget = this.target.budget || { id: 'Select budget account' };
+    this.target.formatType = this.target.formatType || 'timeserie';
+    this.target.dataType = this.target.dataType || 'transactions';
+    this.dataTypes = [
+      { text: 'Budgets', value: 'budgets' },
+      { text: 'Accounts', value: 'accounts' },
+      { text: 'Transactions', value: 'transactions' },
+    ];
+    this.formatTypes = [
+      { text: 'TimeSerie', value: 'timeserie' },
+      { text: 'Table', value: 'table' },
+    ];
+    this.budgets = [];
   }
 
   getOptions(query) {
     return this.datasource.metricFindQuery(query || '');
+  }
+
+  getBudgets(query) {
+    return this.datasource.budgetFindQuery(query || '');
   }
 
   onChangeInternal() {

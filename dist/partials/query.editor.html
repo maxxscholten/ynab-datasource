@@ -1,17 +1,50 @@
-<query-editor-row query-ctrl="ctrl" can-collapse="false">
+<query-editor-row
+  query-ctrl="ctrl"
+  can-collapse="false"
+>
   <div class="gf-form-group">
     <div class="gf-form-inline">
       <div class="gf-form">
-        <gf-form-dropdown model="ctrl.target.target"
+        <label class="gf-form-label width-6 query-keyword">Formatting</label>
+
+        <gf-form-dropdown
+          class="select-budget-account"
+          model="ctrl.target.formatType"
+          lookup-text="true"
+          get-options="ctrl.formatTypes"
+        ></gf-form-dropdown>
+
+      </div>
+      <div class="gf-form gf-form--grow">
+          <div class="gf-form-label gf-form-label--grow"></div>
+        </div>
+    </div>
+    <div class="gf-form-group">
+    <div class="gf-form-inline">
+      <div class="gf-form">
+
+          <label class="gf-form-label width-6 query-keyword">Series</label>
+        <gf-form-dropdown
+          class="select-budget-account"
+          model="ctrl.target.budget.id"
           allow-custom="true"
           lookup-text="true"
-          get-options="ctrl.getOptions($query)"
-          on-change="ctrl.onChangeInternal()">
-        </gf-form-dropdown>
+          get-options="ctrl.getBudgets($query)"
+          on-change="ctrl.onChangeInternal()"
+        ></gf-form-dropdown>
+
+        <gf-form-dropdown
+          class="select-budget-account"
+          model="ctrl.target.dataType"
+          lookup-text="true"
+          get-options="ctrl.dataTypes"
+        ></gf-form-dropdown>
       </div>
+
       <div class="gf-form gf-form--grow">
         <div class="gf-form-label gf-form-label--grow"></div>
       </div>
     </div>
   </div>
+</div>
 </query-editor-row>
